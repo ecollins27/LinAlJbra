@@ -27,6 +27,11 @@ public class Scalar extends Expression {
 
     Scalar(ArrayList<long[]> primeFactorization){
         this.primeFactorization = primeFactorization;
+        for (int i = primeFactorization.size() - 1; i >= 0; i--) {
+            if (primeFactorization.get(i)[1] == 0){
+                primeFactorization.remove(i);
+            }
+        }
         this.primeFactorization.sort(primeComparator);
         this.value = 1;
         for (long[] factor: this.primeFactorization){
