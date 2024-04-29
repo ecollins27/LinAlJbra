@@ -5,7 +5,9 @@ import java.util.ArrayList;
 public class Log extends Expression {
 
     public static Expression log(Expression base, Expression operand){
-        if (base instanceof Decimal && operand.isEvaluable()){
+        if (base.equals(Decimal.NAN) || operand.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (base instanceof Decimal && operand.isEvaluable()){
             return new Decimal(Math.log(operand.eval(null)) / Math.log(((Decimal) base).value));
         } else if (operand instanceof Decimal && base.isEvaluable()){
             return new Decimal(Math.log(((Decimal) operand).value) / Math.log(base.eval(null)));

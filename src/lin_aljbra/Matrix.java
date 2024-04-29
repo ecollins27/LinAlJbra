@@ -8,6 +8,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class Matrix<M extends Matrix<M,E>,E> {
 
@@ -77,6 +79,16 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
         return newMatrixInstance(newElements);
     }
 
+    public final M transpose(){
+        E[][] newElements = newArrayInstance(width,height);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                newElements[j][i] = get(i,j);
+            }
+        }
+        return newMatrixInstance(newElements);
+    }
+
     public final E det(){
         if (width != height){
             throw new RuntimeException("Matrix must be square");
@@ -118,6 +130,19 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
         return rrefManager.rref();
     }
 
+    public final M augment(M matrix){
+        if (height != matrix.height){
+            throw new RuntimeException("Matrix of incompatible dimensions");
+        }
+        E[][] newElements = newArrayInstance(height,width + matrix.width);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < (width + matrix.width); j++) {
+                newElements[i][j] = j < width? get(i,j): matrix.get(i, j - width);
+            }
+        }
+        return newMatrixInstance(newElements);
+    }
+
     public ArrayList<E> exactEigenvalues(){
         ArrayList<E> eigenvalues = new ArrayList<>();
         if (width != height){
@@ -130,14 +155,12 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
             E a = valueOf(1);
             E b = multiply(valueOf(-1),add(get(0,0),get(1,1)));
             E c = subtract(multiply(get(0,0),get(1,1)),multiply(get(1,0),get(0,1)));
-            System.out.println(a + " " + b + " " + c);
             E discriminant = subtract(multiply(b,b),multiply(valueOf(4),multiply(a,c)));
             if (discriminant.equals(valueOf(0))){
                 E eigenValue = divide(multiply(valueOf(-1),b),multiply(valueOf(2),a));
                 return new ArrayList<>(Arrays.asList(eigenValue));
             }
             E difference = pow(discriminant,divide(valueOf(1),valueOf(2)));
-            System.out.println(discriminant);
             E eigenValue1 = divide(add(multiply(valueOf(-1),b),difference),multiply(valueOf(2),a));
             E eigenValue2 = divide(add(multiply(valueOf(-1),b),difference),multiply(valueOf(2),a));
             eigenvalues.add(eigenValue1);
@@ -146,34 +169,109 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
         }
     }
 
-    public Numeric approximateDominantEigenvector(int numIterations){
-        if (width != height){
-            throw new RuntimeException("Matrix must be square");
-        } if (numIterations <= 0){
-            throw new RuntimeException("Variable numIterations must be positive");
+    E[][] pad(E... entry){
+        E[][] array = newArrayInstance(entry.length,1);
+        for (int i = 0; i < entry.length; i++) {
+            array[i][0] = entry[i];
         }
-        Numeric matrix = eval();
-        Double[][] v = new Double[height][1];
-        for (int i = 0; i < height; i++){
-            v[i][0] = 1.0;
-        }
-        Numeric eigenVector = new Numeric(v);
-        for (int i = 0; i < numIterations;i++){
-            eigenVector = matrix.multiply(eigenVector);
-            eigenVector = eigenVector.divide(eigenVector.get(0,0));
-        }
-        return eigenVector;
+        return array;
     }
 
-    public final double approximateEigenvalue(Numeric eigenvector){
-        Numeric matrix = eval();
-        return dot(matrix.multiply(eigenvector),eigenvector) / dot(eigenvector,eigenvector);
+    public boolean isEmpty() {
+        boolean isEmpty = true;
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                if (!get(i,j).equals(valueOf(0))){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    protected M normalize(){
+        E magnitude = getMagnitude();
+        return this.divide(magnitude);
+    }
+    
+    protected E getMagnitude(){
+        E sum = valueOf(0);
+        for (int i = 0; i < height; i++) {
+            sum = add(sum,pow(get(i,0),valueOf(2)));
+        }
+        return pow(sum,divide(valueOf(1),valueOf(2)));
+    }
+
+    public M getColumn(int index){
+        E[][] newElements = newArrayInstance(height,1);
+        for (int i = 0; i < height; i++) {
+            newElements[i][0] = get(i,index);
+        }
+        return newMatrixInstance(newElements);
+    }
+
+    public M getRow(int index){
+        E[][] newElements = newArrayInstance(1,width);
+        for (int i = 0; i < width; i++) {
+            newElements[0][i] = get(index,i);
+        }
+        return newMatrixInstance(newElements);
+    }
+
+    public final Set<Double> approximateEigenvalues(int numIterations){
+        if (numIterations <= 0){
+            throw new RuntimeException("Variable numIterations must be positive");
+        } if (height != width){
+            throw new RuntimeException("Matrix must be square");
+        }
+        Matrix.Numeric matrix = eval();
+        for (int i = 0; i < numIterations;i++){
+            Double s = matrix.get(matrix.getHeight() - 1, matrix.getWidth() - 1);
+            Matrix.Numeric sMatrix = Matrix.Numeric.identity(matrix.getHeight()).multiply(s);
+            Matrix.Numeric[] QR = matrix.subtract(sMatrix).QRDecomposition();
+            QR[0] = pad(QR[0]);
+            QR[1] = pad(QR[1]);
+            if (QR[0].width < matrix.width){
+                break;
+            }
+            matrix = QR[1].multiply(QR[0]).add(sMatrix).round(6);
+        }
+        Set<Double> eigenValues = new HashSet<>();
+        for (int i = 0; i < height; i++) {
+            eigenValues.add(matrix.get(i,i));
+        }
+        return eigenValues;
+    }
+
+    private static Matrix.Numeric pad(Matrix.Numeric matrix){
+        int length = Math.max(matrix.width,matrix.height);
+        Double[][] newElements = new Double[length][length];
+        for (int i = 0; i < length; i++) {
+            for (int j = 0; j < length; j++) {
+                if (j >= matrix.width){
+                    newElements[i][j] = 0.0;
+                } else if (i >= matrix.height){
+                    newElements[i][j] = 0.0;
+                } else {
+                    newElements[i][j] = matrix.get(i,j);
+                }
+            }
+        }
+        return new Matrix.Numeric(newElements);
     }
 
     private static double dot(Numeric a, Numeric b){
         double sum = 0;
         for (int i = 0; i < a.height; i++) {
             sum += a.get(i,0) * b.get(i,0);
+        }
+        return sum;
+    }
+
+    private E dot(M a, M b){
+        E sum = valueOf(0);
+        for (int i = 0; i < a.height; i++) {
+            sum = add(sum,multiply(a.get(i,0),b.get(i,0)));
         }
         return sum;
     }
@@ -280,15 +378,69 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
     public static class Numeric extends Matrix<Numeric,Double> {
 
         public Numeric(Double[]... elements){
-            super(ElementType.DECIMAL, Numeric.class,Double.class,elements);
+            super(ElementType.NUMERIC, Numeric.class,Double.class,elements);
+        }
+
+        public Numeric(double[]... elements){
+            super(ElementType.NUMERIC, Matrix.Numeric.class, Double.class);
+            Double[][] newElements = newArrayInstance(elements.length, elements[0].length);
+            for (int i = 0; i < newElements.length; i++) {
+                for (int j = 0; j < elements[i].length; j++) {
+                    newElements[i][j] = elements[i][j];
+                }
+            }
+            initElements(newElements);
+        }
+
+        public final Numeric round(int numDecimals){
+            double t = Math.pow(8,numDecimals);
+            return performOperation(this,null,(a,b) -> Math.round(a * t) / t);
         }
 
         public final static Numeric identity(int size){
             Double[][] elements = new Double[size][size];
-            for (int i = 0; i < size;i++){
-                elements[i][i] = 1.0;
+            for (int i = 0; i < size; i++) {
+                for (int j = 0; j < size; j++) {
+                    if (i == j){
+                        elements[i][j] = 1.0;
+                    } else {
+                        elements[i][j] = 0.0;
+                    }
+                }
             }
             return new Numeric(elements);
+        }
+
+        public Matrix.Numeric[] QRDecomposition(){
+            Matrix.Numeric Q = getColumn(0);
+            Matrix.Numeric R = newMatrixInstance(pad(Q.getMagnitude()));
+            Q = Q.normalize();
+            for (int i = 1; i < width; i++) {
+                Matrix.Numeric column = getColumn(i);
+                Double[] dots = newArrayInstance(Q.width);
+                for (int j = 0; j < dots.length; j++) {
+                    Matrix.Numeric qColumn = Q.getColumn(j);
+                    dots[j] = dot(column,qColumn);
+                    column = column.subtract(qColumn.multiply(dots[j]));
+                }
+                R = R.augment(newMatrixInstance(pad(dots)));
+                if (!column.isEmpty()){
+                    Double[] zeros = newArrayInstance(Q.width + 1);
+                    for (int j = 0; j < zeros.length; j++) {
+                        if (j == zeros.length - 1){
+                            zeros[j] = column.getMagnitude();
+                        } else {
+                            zeros[j] = valueOf(0);
+                        }
+                    }
+                    R = R.transpose().augment(newMatrixInstance(pad(zeros))).transpose();
+                    Q = Q.augment(column.normalize());
+                }
+            }
+            Matrix.Numeric[] QR = (Matrix.Numeric[]) Array.newInstance(matrixClass,2);
+            QR[0] = Q;
+            QR[1] = R;
+            return QR;
         }
     }
 

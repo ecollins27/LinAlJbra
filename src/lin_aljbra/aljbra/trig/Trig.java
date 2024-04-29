@@ -7,31 +7,45 @@ import java.lang.reflect.InvocationTargetException;
 public abstract class Trig extends Expression {
 
     public static Expression cos(Expression e){
-        if (e instanceof ACos){
+        if (e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e instanceof ACos){
             return ((ACos) e).operand;
-        } else if (e instanceof Decimal){
+        } if (e instanceof Decimal){
             return new Decimal(Math.cos(((Decimal) e).getValue()));
+        } if (Cos.lookup(e) != null){
+            return Cos.lookup(e);
         }
         return new Cos(e);
     }
     public static Expression sin(Expression e){
-        if (e instanceof ASin){
+        if (e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e instanceof ASin){
             return ((ASin) e).operand;
-        } else if (e instanceof Decimal){
+        } if (e instanceof Decimal){
             return new Decimal(Math.sin(((Decimal) e).getValue()));
+        } if (Sin.lookup(e) != null){
+            return Sin.lookup(e);
         }
         return new Sin(e);
     }
     public static Expression tan(Expression e){
-        if (e instanceof ATan){
+        if (e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e instanceof ATan){
             return ((ATan) e).operand;
-        } else if (e instanceof Decimal){
+        } if (e instanceof Decimal){
             return new Decimal(Math.tan(((Decimal) e).getValue()));
+        } if (Tan.lookup(e) != null){
+            return Tan.lookup(e);
         }
         return new Tan(e);
     }
     public static Expression acos(Expression e){
-        if (e instanceof Cos){
+        if (e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e instanceof Cos){
             return ((Cos) e).operand;
         } else if (e instanceof Decimal){
             return new Decimal(Math.acos(((Decimal) e).getValue()));
@@ -39,7 +53,9 @@ public abstract class Trig extends Expression {
         return new ACos(e);
     }
     public static Expression asin(Expression e){
-        if (e instanceof Sin){
+        if (e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e instanceof Sin){
             return ((Sin) e).operand;
         } else if (e instanceof Decimal){
             return new Decimal(Math.asin(((Decimal) e).getValue()));
@@ -47,7 +63,9 @@ public abstract class Trig extends Expression {
         return new ASin(e);
     }
     public static Expression atan(Expression e){
-        if (e instanceof Tan){
+        if (e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e instanceof Tan){
             return ((Tan) e).operand;
         } else if (e instanceof Decimal){
             return new Decimal(Math.atan(((Decimal) e).getValue()));

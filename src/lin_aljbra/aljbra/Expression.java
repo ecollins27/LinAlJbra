@@ -5,7 +5,9 @@ import java.util.ArrayList;
 public abstract class Expression implements Comparable<Expression>{
 
     public final Expression add(Expression e){
-        if (e.equals(Scalar.ZERO) || e.equals(Decimal.ZERO)){
+        if (this.equals(Decimal.NAN) || e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e.equals(Scalar.ZERO) || e.equals(Decimal.ZERO)){
             return this;
         } else if (this.equals(Scalar.ZERO) || this.equals(Decimal.ZERO)){
             return e;
@@ -21,7 +23,9 @@ public abstract class Expression implements Comparable<Expression>{
         return this.add(e.negate());
     }
     public final Expression multiply(Expression e){
-        if (e.equals(Scalar.ZERO) || this.equals(Scalar.ZERO)){
+        if (this.equals(Decimal.NAN) || e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e.equals(Scalar.ZERO) || this.equals(Scalar.ZERO)){
             return Scalar.ZERO;
         } else if (e.equals(Decimal.ZERO) || this.equals(Decimal.ZERO)){
             return Decimal.ZERO;
@@ -41,7 +45,9 @@ public abstract class Expression implements Comparable<Expression>{
         return this.multiply(e.invert());
     }
     public final Expression pow(Expression e){
-        if (e.equals(Scalar.ONE) || this.equals(Scalar.ZERO) || this.equals(Scalar.ONE) ||
+        if (this.equals(Decimal.NAN) || e.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        } if (e.equals(Scalar.ONE) || this.equals(Scalar.ZERO) || this.equals(Scalar.ONE) ||
             e.equals(Decimal.ONE) || this.equals(Decimal.ZERO) || this.equals(Decimal.ONE)){
             return this;
         } else if (e.equals(Scalar.ZERO) || e.equals(Decimal.ZERO)){

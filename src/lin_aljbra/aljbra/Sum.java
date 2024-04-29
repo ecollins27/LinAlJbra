@@ -179,17 +179,31 @@ class Sum extends Expression {
             newTerms[terms.length] = e;
             return new Sum(newTerms);
         } else {
-            Expression[] newTerms = terms.clone();
-            for (int i = 0; i < newTerms.length;i++){
-                if (newTerms[i].isAdditionCompatible(e)){
-                    newTerms[i] = newTerms[i].add(e);
-                    break;
-                } else if (e.isAdditionCompatible(newTerms[i])){
-                    newTerms[i] = e.add(newTerms[i]);
-                    break;
+            ArrayList<Expression> newTerms = new ArrayList<>();
+            boolean added = false;
+            for (int i = 0; i < terms.length;i++){
+                if (!added && terms[i].isAdditionCompatible(e)){
+                    Expression sum = terms[i].add(e);
+                    if (!sum.equals(Scalar.ZERO) && !sum.equals(Decimal.ZERO)){
+                        newTerms.add(sum);
+                    }
+                    added = true;
+                } else if (!added && e.isAdditionCompatible(terms[i])){
+                    Expression sum = e.add(terms[i]);
+                    if (!sum.equals(Scalar.ZERO) && !sum.equals(Decimal.ZERO)){
+                        newTerms.add(sum);
+                    }
+                    added = true;
+                } else if (!terms[i].equals(Scalar.ZERO) && !terms[i].equals(Scalar.ZERO)){
+                    newTerms.add(terms[i]);
                 }
             }
-            return new Sum(newTerms);
+            if (newTerms.size() == 0){
+                return Scalar.ZERO;
+            } if (newTerms.size() == 1){
+                return newTerms.get(0);
+            }
+            return new Sum(newTerms.toArray(new Expression[0]));
         }
     }
 

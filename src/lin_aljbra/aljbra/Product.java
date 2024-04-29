@@ -307,17 +307,31 @@ class Product extends Expression {
             newTerms[terms.length] = e;
             return new Product(newTerms);
         } else {
-            Expression[] newTerms = terms.clone();
-            for (int i = 0; i < newTerms.length;i++){
-                if (newTerms[i].isMultiplicationCompatible(e)){
-                    newTerms[i] = newTerms[i].multiply(e);
-                    break;
-                } else if (e.isMultiplicationCompatible(newTerms[i])){
-                    newTerms[i] = e.multiply(newTerms[i]);
-                    break;
+            ArrayList<Expression> newTerms = new ArrayList<>();
+            boolean added = false;
+            for (int i = 0; i < terms.length;i++){
+                if (!added && terms[i].isMultiplicationCompatible(e)){
+                    Expression product = terms[i].multiply(e);
+                    if (!product.equals(Scalar.ONE) && !product.equals(Decimal.ONE)){
+                        newTerms.add(product);
+                    }
+                    added = true;
+                } else if (!added &&e.isMultiplicationCompatible(terms[i])){
+                    Expression product = e.multiply(terms[i]);
+                    if (!product.equals(Scalar.ONE) && !product.equals(Decimal.ONE)){
+                        newTerms.add(product);
+                    }
+                    added = true;
+                } else if (!terms[i].equals(Scalar.ONE) && !terms[i].equals(Decimal.ONE)){
+                    newTerms.add(terms[i]);
                 }
             }
-            return new Product(newTerms);
+            if (newTerms.size() == 0){
+                return Scalar.ONE;
+            } if (newTerms.size() == 1){
+                return newTerms.get(0);
+            }
+            return new Product(newTerms.toArray(new Expression[0]));
         }
     }
 

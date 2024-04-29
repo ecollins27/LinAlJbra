@@ -5,7 +5,7 @@ import lin_aljbra.aljbra.Scalar;
 
 abstract class ElementType<E> {
 
-    public static final ElementType<Double> DECIMAL = new ElementType<Double>() {
+    public static final ElementType<Double> NUMERIC = new ElementType<Double>() {
         @Override
         public String toLaTeX(Double aDouble) {
             return String.valueOf(aDouble);

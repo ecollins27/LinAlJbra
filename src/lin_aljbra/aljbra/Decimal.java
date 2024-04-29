@@ -14,6 +14,8 @@ public class Decimal extends Expression {
     public final static Decimal E = new Decimal(Math.E);
     public final static Decimal PHI = new Decimal((1 + Math.sqrt(5)) / 2.0);
 
+    public final static Decimal NAN = new Decimal(Double.NaN);
+
     double value;
 
     public Decimal(double value){
@@ -29,23 +31,32 @@ public class Decimal extends Expression {
     }
     @Override
     public Expression negate() {
+        if (this.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        }
         return new Decimal(-value);
     }
 
     @Override
     public Expression invert() {
+        if (this.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        }
         BigDecimal inversion = BigDecimal.ONE.divide(BigDecimal.valueOf(value), MathContext.DECIMAL128);
         return new Decimal(inversion.doubleValue());
     }
 
     @Override
     public Expression derivative(Variable v) {
+        if (this.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        }
         return Scalar.ZERO;
     }
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof Decimal && ((Decimal) o).value == value;
+        return (o instanceof Decimal && ((Decimal) o).value == value) || (o instanceof Decimal && Double.isNaN(value) && Double.isNaN(((Decimal) o).value));
     }
 
     @Override
@@ -93,14 +104,23 @@ public class Decimal extends Expression {
 
     @Override
     public Expression abs() {
+        if (this.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        }
         return new Decimal(Math.abs(value));
     }
 
     public Expression asFraction(){
+        if (this.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        }
         return Fraction.valueOf(value);
     }
 
     public Expression asFraction(int repeatingLength){
+        if (this.equals(Decimal.NAN)){
+            return Decimal.NAN;
+        }
         return Fraction.valueOf(value,repeatingLength);
     }
 
