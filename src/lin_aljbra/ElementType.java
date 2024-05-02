@@ -1,5 +1,6 @@
 package lin_aljbra;
 
+import lin_aljbra.aljbra.Decimal;
 import lin_aljbra.aljbra.Expression;
 import lin_aljbra.aljbra.Scalar;
 
@@ -45,6 +46,11 @@ abstract class ElementType<E> {
         public double eval(Double a) {
             return a.doubleValue();
         }
+
+        @Override
+        public Expression symbolic(Double a) {
+            return new Decimal(a);
+        }
     };
 
     public static final ElementType<Expression> SYMBOLIC = new ElementType<Expression>() {
@@ -87,6 +93,11 @@ abstract class ElementType<E> {
         public double eval(Expression a) {
             return a.eval(null);
         }
+
+        @Override
+        public Expression symbolic(Expression a) {
+            return a;
+        }
     };
     public abstract String toLaTeX(E e);
     public abstract E add(E a, E b);
@@ -96,4 +107,5 @@ abstract class ElementType<E> {
     public abstract E pow(E a, E b);
     public abstract E valueOf(long n);
     public abstract double eval(E a);
+    public abstract Expression symbolic(E a);
 }

@@ -1,7 +1,6 @@
 package lin_aljbra;
 
-import lin_aljbra.aljbra.Expression;
-import lin_aljbra.aljbra.Scalar;
+import lin_aljbra.aljbra.*;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -218,29 +217,8 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
         return newMatrixInstance(newElements);
     }
 
-    public final Set<Double> approximateEigenvalues(int numIterations){
-        if (numIterations <= 0){
-            throw new RuntimeException("Variable numIterations must be positive");
-        } if (height != width){
-            throw new RuntimeException("Matrix must be square");
-        }
-        Matrix.Numeric matrix = eval();
-        for (int i = 0; i < numIterations;i++){
-            Double s = matrix.get(matrix.getHeight() - 1, matrix.getWidth() - 1);
-            Matrix.Numeric sMatrix = Matrix.Numeric.identity(matrix.getHeight()).multiply(s);
-            Matrix.Numeric[] QR = matrix.subtract(sMatrix).QRDecomposition();
-            QR[0] = pad(QR[0]);
-            QR[1] = pad(QR[1]);
-            if (QR[0].width < matrix.width){
-                break;
-            }
-            matrix = QR[1].multiply(QR[0]).add(sMatrix).round(6);
-        }
-        Set<Double> eigenValues = new HashSet<>();
-        for (int i = 0; i < height; i++) {
-            eigenValues.add(matrix.get(i,i));
-        }
-        return eigenValues;
+    public final double[] approximateEigenvalues(){
+        return getRoots(getCharacteristicCoefficients());
     }
 
     private static Matrix.Numeric pad(Matrix.Numeric matrix){
@@ -276,14 +254,176 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
         return sum;
     }
 
-    public final Numeric eval(){
+    public final Numeric toNumeric(){
         Double[][] newElements = new Double[height][width];
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
-                newElements[i][j] = eval(get(i,j));
+                newElements[i][j] = toNumeric(get(i,j));
             }
         }
         return new Numeric(newElements);
+    }
+
+    public final Symbolic toSymbolic(){
+        Expression[][] newElements = new Expression[height][width];
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                newElements[i][j] = toSymbolic(get(i,j));
+            }
+        }
+        return new Symbolic(newElements);
+    }
+
+    private static double[] getRoots(double[] p){
+        double[] polynomial = p.clone();
+        int numRoots = numRoots(p);
+        double[] roots = new double[numRoots];
+        for (int i = 0; i < numRoots; i++) {
+            roots[i] = newtonsMethod(polynomial);
+            polynomial = divide(polynomial,new double[]{1,-roots[i]})[0];
+        }
+        return roots;
+    }
+
+    private static double newtonsMethod(double[] p){
+        double[] derivative = derivative(p);
+        double difference = Integer.MAX_VALUE;
+        double guess = 0;
+        while (eval(derivative,guess) == 0){
+            guess += 0.1;
+        }
+        while (Math.abs(difference) > 0.0001){
+            double prevGuess = guess;
+            guess -= eval(p,guess) / eval(derivative,guess);
+            difference = guess - prevGuess;
+        }
+        return guess;
+    }
+
+    private static double eval(double[] p, double x){
+        double sum = 0;
+        for (int i = 0; i < p.length; i++) {
+            sum += p[i] * Math.pow(x,p.length - 1 - i);
+        }
+        return sum;
+    }
+
+    private static int numRoots(double[] polynomial){
+        double[] derivative = derivative(polynomial);
+        double[][] sequence = new double[polynomial.length][0];
+        sequence[0] = polynomial;
+        sequence[1] = derivative;
+        for (int i = 2; i < sequence.length; i++) {
+            sequence[i] = multiply(divide(sequence[i - 2], sequence[i - 1])[1], -1);
+        }
+        boolean positiveLastSign = polynomial[0] > 0;
+        boolean negativeLastSign = (polynomial.length % 2 == 0)? polynomial[0] < 0: polynomial[0] > 0;
+        int positive = 0;
+        int negative = 0;
+        for (int i = 1; i < sequence.length; i++) {
+            if (sequence[i].length == 0){
+                continue;
+            } if (positiveLastSign && sequence[i][0] < 0){
+                positive++;
+                positiveLastSign = false;
+            } else if (!positiveLastSign && sequence[i][0] > 0){
+                positive++;
+                positiveLastSign = true;
+            } if (negativeLastSign && ((sequence[i].length % 2 == 0 && sequence[i][0] > 0) || (sequence[i].length % 2 == 1 && sequence[i][0] < 0))){
+                negative++;
+                negativeLastSign = false;
+            } else if (!negativeLastSign && ((sequence[i].length % 2 == 0 && sequence[i][0] < 0) || (sequence[i].length % 2 == 1 && sequence[i][0] > 0))){
+                negative++;
+                negativeLastSign = true;
+            }
+        }
+        return negative - positive;
+    }
+
+    private static double[][] divide(double[] p1, double[] p2){
+        double[] polynomial = p1.clone();
+        double[] result = new double[p1.length - p2.length + 1];
+        for (int i = 0; i < result.length; i++) {
+            if (polynomial.length < p2.length){
+                return new double[][]{result,polynomial};
+            }
+            result[i] = polynomial[0] / p2[0];
+            polynomial = trim(subtract(polynomial,multiply(p2,result[i])));;
+        }
+        if (polynomial.length == 0){
+            return new double[][]{result, new double[]{0}};
+        }
+        return new double[][]{result,polynomial};
+    }
+
+    private static double[] multiply(double[] p, double n){
+        double[] result = new double[p.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = n * p[i];
+        }
+        return result;
+    }
+
+    private static double[] subtract(double[] p1, double[] p2){
+        double[] result = new double[p1.length];
+        for (int i = 0; i < result.length; i++) {
+            if (i < p2.length){
+                result[i] = p1[i] - p2[i];
+            } else {
+                result[i] = p1[i];
+            }
+        }
+        return result;
+    }
+
+    private static double[] trim(double[] polynomial){
+        int index = 0;
+        while (index < polynomial.length && Math.round(polynomial[index] * 100000) == 0){
+            index++;
+        }
+        double[] result = new double[polynomial.length - index];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = polynomial[i + index];
+        }
+        return result;
+    }
+
+    private static double[] derivative(double[] polynomial){
+        double[] derivative = new double[polynomial.length - 1];
+        for (int i = 0; i < derivative.length; i++) {
+            derivative[i] = polynomial[i] * (derivative.length - i);
+        }
+        return derivative;
+    }
+
+    private final double[] getCharacteristicCoefficients(){
+        Expression characteristic = characteristicPolynomial().fullSimplify().withDecimals();
+        Variable lambda = new Variable('l',"","\\lambda");
+        double[] coefficients = new double[height + 1];
+        coefficients[0] = 1;
+        for (int i = 1; i < coefficients.length; i++) {
+            Expression derivative = characteristic;
+            int factorial = 1;
+            for (int j = 0; j < i; j++) {
+                derivative = derivative.subtract(new Decimal(coefficients[j]).multiply(lambda.pow(new Decimal(height - j))));
+            }
+            for (int j = 0; j < (height - i); j++) {
+                factorial *= (j + 1);
+                derivative = derivative.derivative(lambda);
+            }
+            coefficients[i] = ((Decimal) derivative.withDecimals()).getValue() / (factorial == 0? 1:factorial);
+        }
+        return coefficients;
+    }
+
+    public final Expression characteristicPolynomial(){
+        if (width != height){
+            throw new RuntimeException("Matrix must be square");
+        }
+        Symbolic matrix = this.toSymbolic();
+        Variable lambda = new Variable('l',"","\\lambda");
+        matrix = Symbolic.identity(height).multiply(lambda).subtract(matrix);
+        return matrix.det();
     }
 
     private M cofactor(int x, int y){
@@ -367,8 +507,11 @@ public abstract class Matrix<M extends Matrix<M,E>,E> {
     protected final String toLaTeX(E a){
         return elementType.toLaTeX(a);
     }
-    protected final double eval(E a){
+    protected final double toNumeric(E a){
         return elementType.eval(a);
+    }
+    protected final Expression toSymbolic(E a){
+        return elementType.symbolic(a);
     }
 
     private interface Operation<E> {
